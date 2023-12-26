@@ -25,7 +25,7 @@ class WidgetRequest extends FormRequest
     {
         return [
             '_token' => 'required|string',
-            'route' => 'required|string',
+            'return_url' => 'required|string',
         ];
     }
 }

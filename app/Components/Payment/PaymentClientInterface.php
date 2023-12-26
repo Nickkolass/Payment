@@ -7,8 +7,6 @@ use App\Dto\CallbackDto;
 interface PaymentClientInterface
 {
 
-    public static function getConnection(): ?string;
-
     /**
      * @param array{order_id: int, price: int, return_url: string} $data
      * @return string
@@ -29,7 +27,9 @@ interface PaymentClientInterface
 
     public function authorizeCallback(): void;
 
-    public function getCallback(mixed $requestBody): CallbackDto;
+    public function getCallback(): CallbackDto;
+
+    public function sendCallbackNotification(CallbackDto $callbackDto): void;
 
     public function getWidget(): string;
 }

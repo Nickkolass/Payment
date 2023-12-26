@@ -2,49 +2,48 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Request\Card\WidgetRequest;
+use App\Components\Payment\PaymentClientInterface;
 use App\Http\Request\Card\ValidateRequest;
+use App\Http\Request\Card\WidgetRequest;
 use App\Http\Request\Payment\PayoutRequest;
 use App\Http\Request\Payment\PayRequest;
 use App\Http\Request\Payment\RefundRequest;
-use App\Http\Resources\CardResource;
-use App\Services\PaymentService;
+use Illuminate\Http\Response;
 
 class PaymentController extends Controller
 {
 
-    public function __construct(public readonly PaymentService $paymentService)
+    public function __construct(public readonly PaymentClientInterface $paymentClient)
     {
     }
 
     public function getWidget(WidgetRequest $request): string
     {
         $data = $request->validated();
-        $view = $this->paymentService->paymentClient->getWidget();
-        return view($view, compact('data'))->render();
+        $view = $this->paymentClient->getWidget();
+        return view('widget.yookassa', compact('data'))->render();
     }
 
-    public function cardValidate(ValidateRequest $request): CardResource
+    public function cardValidate(ValidateRequest $request): Response
     {
-        $card = $request->validated()['card'];
-        return new CardResource($card);
+        return response('', 200)->send();
     }
 
     public function pay(PayRequest $request): string
     {
         $data = $request->validated();
-        return $this->paymentService->pay($data);
+        return $this->paymentClient->pay($data);
     }
 
     public function refund(RefundRequest $request): void
     {
         $data = $request->validated();
-        $this->paymentService->refund($data);
+        $this->paymentClient->refund($data);
     }
 
     public function payout(PayoutRequest $request): void
     {
         $data = $request->validated();
-        $this->paymentService->payout($data);
+        $this->paymentClient->payout($data);
     }
 }

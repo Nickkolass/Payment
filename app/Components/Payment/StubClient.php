@@ -3,12 +3,14 @@
 namespace App\Components\Payment;
 
 use App\Dto\CallbackDto;
-use Illuminate\Support\Facades\Http;
+use App\Http\Services\PaymentCallbackService;
 
 class StubClient extends AbstractPaymentClient
 {
 
-    const WIDGET_VIEW = 'payment::widget.stub';
+    const WIDGET_VIEW = 'widget.stub';
+    private string $event;
+    private string $order_id;
 
 
     /**
@@ -17,15 +19,10 @@ class StubClient extends AbstractPaymentClient
      */
     public function pay(array $data): string
     {
-        if (request()->route()->getName() == 'back.api.orders.pay') {
-            $requestBody = [
-                'event' => self::CALLBACK_EVENT_PAY,
-                'order_id' => $data['order_id'],
-            ];
-            $callbackDto = $this->getCallback($requestBody);
-            Http::post(route('back.api.callback.pay'), (array)$callbackDto);
-        }
-        return route('client.orders.index', '', false);
+        $this->event = self::CALLBACK_EVENT_PAY;
+        $this->order_id = $data['order_id'];
+        app(PaymentCallbackService::class)->callback();
+        return $data['return_url'];
     }
 
     /**
@@ -34,14 +31,9 @@ class StubClient extends AbstractPaymentClient
      */
     public function payout(array $data): void
     {
-        if (request()->route()->getName() == 'admin.payout') {
-            $requestBody = [
-                'event' => self::CALLBACK_EVENT_PAYOUT,
-                'order_id' => $data['order_id'],
-            ];
-            $callbackDto = $this->getCallback($requestBody);
-            Http::post(route('admin.callback.payout'), (array)$callbackDto);
-        }
+        $this->event = self::CALLBACK_EVENT_PAYOUT;
+        $this->order_id = $data['order_id'];
+        app(PaymentCallbackService::class)->callback();
     }
 
     /**
@@ -50,23 +42,18 @@ class StubClient extends AbstractPaymentClient
      */
     public function refund(array $data): void
     {
-        if (request()->route()->getName() == 'back.api.orders.refund') {
-            $requestBody = [
-                'event' => self::CALLBACK_EVENT_REFUND,
-                'order_id' => $data['order_id'],
-            ];
-            $callbackDto = $this->getCallback($requestBody);
-            Http::post(route('back.api.callback.refund'), (array)$callbackDto);
-        }
+        $this->event = self::CALLBACK_EVENT_REFUND;
+        $this->order_id = $data['order_id'];
+        app(PaymentCallbackService::class)->callback();
     }
 
-    public function getCallback(mixed $requestBody): CallbackDto
+    public function getCallback(): CallbackDto
     {
         return new CallbackDto(
             id: uniqid('', true),
-            event: $requestBody['event'],
+            event: $this->event ?? request()->input('event'),
             status: self::TRANSACTION_STATUS_SUCCEEDED,
-            order_id: $requestBody['order_id'],
+            order_id: $this->order_id ?? request()->input('order_id'),
         );
     }
 

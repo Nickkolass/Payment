@@ -15,11 +15,13 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/payment/callback', [PaymentCallbackController::class, 'callback'])->name('payment.callback');
-Route::prefix('/payment')->controller(PaymentController::class)->name('payment.')->group(function () {
-    Route::post('/card/widget', 'getWidget')->name('card.widget');
-    Route::post('/card/validate', 'cardValidate')->name('card.validate');
-    Route::post('/pay', 'pay')->name('pay');
-    Route::post('/payout', 'payout')->name('payout');
-    Route::post('/refund', 'refund')->name('refund');
+Route::prefix('/payment')->name('payment.')->group(function () {
+    Route::post('/callback', [PaymentCallbackController::class, 'callback'])->name('callback');
+    Route::controller(PaymentController::class)->middleware('payment.incoming')->group(function () {
+        Route::post('/card/widget', 'getWidget')->name('card.widget');
+        Route::post('/card/validate', 'cardValidate')->name('card.validate');
+        Route::post('/pay', 'pay')->name('pay');
+        Route::post('/payout', 'payout')->name('payout');
+        Route::post('/refund', 'refund')->name('refund');
+    });
 });

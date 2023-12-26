@@ -22,7 +22,7 @@ use YooKassa\Model\Refund\RefundInterface;
 class YooKassaClient extends AbstractPaymentClient
 {
 
-    const WIDGET_VIEW = 'payment::widget.yookassa';
+    public const WIDGET_VIEW = 'widget.yookassa';
 
     public function __construct(public readonly Client $client)
     {
@@ -99,10 +99,9 @@ class YooKassaClient extends AbstractPaymentClient
 
     public function authorizeCallback(): void
     {
-        if (app()->environment('production')) {
-            $ips = ['185.71.76.0/27', '185.71.77.0/27', '77.75.153.0/25', '77.75.156.11', '77.75.156.35', '77.75.154.128/25', '2a02:5180::/32'];
-            if (!in_array(request()->ip(), $ips)) abort(403);
-        }
+        //проверка на соответствие ip входящего уведомления от платежной системы
+//        $ips = ['185.71.76.0/27', '185.71.77.0/27', '77.75.153.0/25', '77.75.156.11', '77.75.156.35', '77.75.154.128/25', '2a02:5180::/32'];
+//        if (!in_array(request()->ip(), $ips)) abort(403);
     }
 
     public function getWidget(): string
@@ -110,8 +109,10 @@ class YooKassaClient extends AbstractPaymentClient
         return self::WIDGET_VIEW;
     }
 
-    public function getCallback(mixed $requestBody): CallbackDto
+    public function getCallback(): CallbackDto
     {
+        $source = file_get_contents('php://input');
+        $requestBody = json_decode((string)$source, true);
         $notification = $this->getNotification($requestBody);
         $transaction = $notification->getObject();
 

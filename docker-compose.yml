@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+    nginx:
+        restart: always
+        image: nginx:latest
+        volumes:
+            - ./:/var/www
+            - ./_docker/nginx/conf.d:/etc/nginx/conf.d
+        ports:
+            - '8877:80'
+        depends_on:
+            - app
+        container_name: payment_nginx
+
+    app:
+        restart: always
+        build:
+            context: .
+            dockerfile: ./_docker/app/DockerFile
+        volumes:
+            - ./:/var/www
+        container_name: payment_app

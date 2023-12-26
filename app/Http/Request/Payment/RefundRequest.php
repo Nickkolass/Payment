@@ -24,6 +24,7 @@ class RefundRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'order_id' => 'required|int',
             'pay_id' => 'required|string',
             'price' => 'required|int',
         ];

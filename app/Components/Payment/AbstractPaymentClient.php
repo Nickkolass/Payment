@@ -2,6 +2,9 @@
 
 namespace App\Components\Payment;
 
+use App\Dto\CallbackDto;
+use Illuminate\Support\Facades\Http;
+
 abstract class AbstractPaymentClient implements PaymentClientInterface
 {
 
@@ -38,9 +41,16 @@ abstract class AbstractPaymentClient implements PaymentClientInterface
         return config('payment.default');
     }
 
+    public static function getClientName(): ?string
+    {
+        $connection = self::getConnection();
+        return config("payment.connections.{$connection}.bind");
+    }
+
     public static function getAgentLogin(): ?string
     {
-        return config('payment.connections.' . self::getConnection() . '.agent.login');
+        $connection = self::getConnection();
+        return config("payment.connections.{$connection}.agent.login");
     }
 
     /**
@@ -69,5 +79,16 @@ abstract class AbstractPaymentClient implements PaymentClientInterface
         ];
     }
 
+    public function sendCallbackNotification(CallbackDto $callbackDto): void
+    {
+        if ($callbackDto->status == self::TRANSACTION_STATUS_SUCCEEDED) {
+            for ($i = 3; $i <= 9; $i+=2) {
+                $status =  Http::post('host.docker.internal:8876/api/payment/callback', (array)$callbackDto)->status();
+                if($status == 200) break;
+                $fib = round(1.618 ** $i / 2.236);
+                sleep($fib);
+            }
+        } else \Log::info((string)json_encode($callbackDto));
+    }
 }
 
