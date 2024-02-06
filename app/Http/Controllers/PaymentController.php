@@ -2,48 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Components\Payment\PaymentClientInterface;
-use App\Http\Request\Card\ValidateRequest;
-use App\Http\Request\Card\WidgetRequest;
-use App\Http\Request\Payment\PayoutRequest;
-use App\Http\Request\Payment\PayRequest;
-use App\Http\Request\Payment\RefundRequest;
-use Illuminate\Http\Response;
+use App\Dto\Payment\PaymentDto;
+use App\Http\Request\CardValidateRequest;
+use App\Http\Request\PaymentRequest;
+use App\Http\Request\WidgetRequest;
+use App\Services\PaymentReplyService;
+use App\Services\PaymentService;
 
 class PaymentController extends Controller
 {
 
-    public function __construct(public readonly PaymentClientInterface $paymentClient)
+    public function __construct(
+        private readonly PaymentService      $paymentService,
+        private readonly PaymentReplyService $replyService,
+    )
     {
     }
 
     public function getWidget(WidgetRequest $request): string
     {
         $data = $request->validated();
-        $view = $this->paymentClient->getWidget();
-        return view('widget.yookassa', compact('data'))->render();
+        return $this->paymentService->getRenderedWidget($data['_token'], $data['return_url']);
     }
 
-    public function cardValidate(ValidateRequest $request): Response
+    public function cardValidate(CardValidateRequest $request): void
     {
-        return response('', 200)->send();
     }
 
-    public function pay(PayRequest $request): string
+    public function payment(PaymentRequest $request): void
     {
         $data = $request->validated();
-        return $this->paymentClient->pay($data);
+        $method = $data['payment_type'];
+        $payment_id = $this->paymentService->$method(new PaymentDto(...$data));
+        $this->replyService->requesterIdCaching($payment_id, $request->headers->get('requester-id'));
+        if (config('payment.default') == 'stub') $this->callback();
     }
 
-    public function refund(RefundRequest $request): void
+    /** Уведомления от платежной системы */
+    public function callback(): void
     {
-        $data = $request->validated();
-        $this->paymentClient->refund($data);
-    }
-
-    public function payout(PayoutRequest $request): void
-    {
-        $data = $request->validated();
-        $this->paymentClient->payout($data);
+        $callbackDto = $this->paymentService->callback();
+        if ($callbackDto) $this->replyService->notify($callbackDto, $callbackDto->id);
     }
 }

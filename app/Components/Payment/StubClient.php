@@ -2,68 +2,57 @@
 
 namespace App\Components\Payment;
 
-use App\Dto\CallbackDto;
-use App\Http\Services\PaymentCallbackService;
+use App\Dto\Payment\PaymentCallbackDto;
+use App\Dto\Payment\PaymentDto;
 
 class StubClient extends AbstractPaymentClient
 {
 
     const WIDGET_VIEW = 'widget.stub';
-    private string $event;
-    private string $order_id;
+    private string $payment_id;
+    private string $payment_type;
+    private int $order_id;
 
-
-    /**
-     * @param array{order_id: int, price: int, return_url: string} $data
-     * @return string
-     */
-    public function pay(array $data): string
+    public function pay(PaymentDto $paymentDto): ?string
     {
-        $this->event = self::CALLBACK_EVENT_PAY;
-        $this->order_id = $data['order_id'];
-        app(PaymentCallbackService::class)->callback();
-        return $data['return_url'];
+        $this->pay_url = $paymentDto->return_url;
+        return $this->payment($paymentDto);
     }
 
-    /**
-     * @param array{order_id: int, price: int, payout_token: string} $data
-     * @return void
-     */
-    public function payout(array $data): void
+    public function payout(PaymentDto $paymentDto): ?string
     {
-        $this->event = self::CALLBACK_EVENT_PAYOUT;
-        $this->order_id = $data['order_id'];
-        app(PaymentCallbackService::class)->callback();
+        return $this->payment($paymentDto);
     }
 
-    /**
-     * @param array{order_id: int, pay_id:string, price:int} $data
-     * @return void
-     */
-    public function refund(array $data): void
+    public function refund(PaymentDto $paymentDto): ?string
     {
-        $this->event = self::CALLBACK_EVENT_REFUND;
-        $this->order_id = $data['order_id'];
-        app(PaymentCallbackService::class)->callback();
+        return $this->payment($paymentDto);
     }
 
-    public function getCallback(): CallbackDto
+    public function payment(PaymentDto $paymentDto): string
     {
-        return new CallbackDto(
-            id: uniqid('', true),
-            event: $this->event ?? request()->input('event'),
+        $this->payment_type = $paymentDto->payment_type;
+        $this->order_id = $paymentDto->order_id;
+        return $this->payment_id = uniqid();
+    }
+
+    public function getCallback(): PaymentCallbackDto
+    {
+        return new PaymentCallbackDto(
+            id: $this->payment_id,
+            event: $this->payment_type,
             status: self::TRANSACTION_STATUS_SUCCEEDED,
-            order_id: $this->order_id ?? request()->input('order_id'),
+            order_id: $this->order_id,
         );
+    }
+
+    protected function getWidgetName(): string
+    {
+        return self::WIDGET_VIEW;
     }
 
     public function authorizeCallback(): void
     {
-    }
-
-    public function getWidget(): string
-    {
-        return self::WIDGET_VIEW;
     }
 }
 
