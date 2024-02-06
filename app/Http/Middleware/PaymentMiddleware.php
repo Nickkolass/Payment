@@ -8,6 +8,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PaymentMiddleware
 {
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         //проверка на соответствие ip входящего уведомления от платежной системы

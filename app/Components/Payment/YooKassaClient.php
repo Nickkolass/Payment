@@ -2,8 +2,7 @@
 
 namespace App\Components\Payment;
 
-use App\Dto\Payment\PaymentCallbackDto;
-use App\Dto\Payment\PaymentDto;
+use App\Dto\CallbackDto;
 use YooKassa\Client;
 use YooKassa\Model\Deal\DealInterface;
 use YooKassa\Model\Deal\SettlementPayoutPaymentType;
@@ -25,71 +24,77 @@ class YooKassaClient extends AbstractPaymentClient
 
     public const WIDGET_VIEW = 'widget.yookassa';
 
-    private readonly Client $client;
-
-    private function setAuth(bool $is_payout = false): void
+    public function __construct(public readonly Client $client)
     {
-        $this->client = new Client();
+    }
+
+    public function setAuth(bool $is_payout = false): void
+    {
         $credentials = config('payment.connections.yookassa.' . ($is_payout ? 'agent' : 'shop'));
         $this->client->setAuth(...$credentials);
     }
 
-    public function pay(PaymentDto $paymentDto): ?string
+    /**
+     * @param array{order_id: int, price: int, return_url: string} $data
+     * @return string
+     */
+    public function pay(array $data): string
     {
         $this->setAuth();
-        $pay = $this->client->createPayment([
+        $payment = $this->client->createPayment([
             'amount' => [
-                'value' => $paymentDto->price,
+                'value' => $data['price'],
                 'currency' => 'RUB',
             ],
             'confirmation' => [
                 'type' => 'redirect',
-                'return_url' => $paymentDto->return_url,
+                'return_url' => $data['return_url'],
             ],
             'capture' => true,
-            'description' => 'Оплата заказа №' . $paymentDto->order_id,
+            'description' => 'Оплата заказа №' . $data['order_id'],
             'metadata' => [
-                'order_id' => $paymentDto->order_id,
+                'order_id' => $data['order_id'],
             ],
         ], uniqid('', true));
-        $this->pay_url = $pay->getConfirmation()->getConfirmationUrl();
-        return $pay->getId();
+
+        return $payment->confirmation->getConfirmationUrl();
     }
 
-    public function payout(PaymentDto $paymentDto): ?string
+    /**
+     * @param array{order_id: int, price: int, payout_token: string} $data
+     * @return void
+     */
+    public function payout(array $data): void
     {
         $this->setAuth(true);
-        $payout = $this->client->createPayout([
+        $this->client->createPayout([
             'amount' => [
-                'value' => $paymentDto->price,
+                'value' => $data['price'],
                 'currency' => 'RUB',
             ],
-            'payout_token' => $paymentDto->payout_token,
-            'description' => 'Выплата по заказу №' . $paymentDto->order_id,
+            'payout_token' => $data['payout_token'],
+            'description' => 'Выплата по заказу №' . $data['order_id'],
             'metadata' => [
-                'order_id' => $paymentDto->order_id,
+                'order_id' => $data['order_id'],
             ],
         ], uniqid('', true));
-        return $payout->getId();
     }
 
-    public function refund(PaymentDto $paymentDto): ?string
+    /**
+     * @param array{order_id: int, pay_id:string, price:int} $data
+     * @return void
+     */
+    public function refund(array $data): void
     {
         $this->setAuth();
-        $refund = $this->client->createRefund([
-            'payment_id' => $paymentDto->pay_id,
+        $this->client->createRefund([
+            'payment_id' => $data['pay_id'],
             'amount' => [
-                'value' => $paymentDto->price,
+                'value' => $data['price'],
                 'currency' => 'RUB',
             ],
-            'description' => 'Возврат по заказу №' . $paymentDto->order_id,
+            'description' => 'Возврат по заказу №' . $data['order_id'],
         ], uniqid('', true));
-        return $refund->getId();
-    }
-
-    protected function getWidgetName(): string
-    {
-        return self::WIDGET_VIEW;
     }
 
     public function authorizeCallback(): void
@@ -99,14 +104,19 @@ class YooKassaClient extends AbstractPaymentClient
 //        if (!in_array(request()->ip(), $ips)) abort(403);
     }
 
-    public function getCallback(): PaymentCallbackDto
+    public function getWidget(): string
+    {
+        return self::WIDGET_VIEW;
+    }
+
+    public function getCallback(): CallbackDto
     {
         $source = file_get_contents('php://input');
         $requestBody = json_decode((string)$source, true);
         $notification = $this->getNotification($requestBody);
         $transaction = $notification->getObject();
 
-        return new PaymentCallbackDto(
+        return new CallbackDto(
             id: $transaction->id,
             event: $this->eventAdapter($notification->getEvent()),
             status: $this->statusAdapter($transaction->getStatus()),
@@ -123,6 +133,7 @@ class YooKassaClient extends AbstractPaymentClient
             NotificationEventType::REFUND_SUCCEEDED => new NotificationRefundSucceeded($requestBody),
             NotificationEventType::PAYOUT_SUCCEEDED => new NotificationPayoutSucceeded($requestBody),
             NotificationEventType::PAYOUT_CANCELED => new NotificationPayoutCanceled($requestBody),
+//            NotificationEventType::DEAL_CLOSED => new NotificationDealClosed($requestBody),
             default => null,
         };
         if (is_null($notification)) abort(400);
@@ -132,8 +143,8 @@ class YooKassaClient extends AbstractPaymentClient
     private function statusAdapter(?string $status): string
     {
         $status = match ($status) {
-            PaymentStatus::PENDING => self::TRANSACTION_STATUS_PENDING,
-            PaymentStatus::WAITING_FOR_CAPTURE => self::TRANSACTION_STATUS_WAITING,
+//            PaymentStatus::PENDING => self::TRANSACTION_STATUS_PENDING,
+//            PaymentStatus::WAITING_FOR_CAPTURE => self::TRANSACTION_STATUS_WAITING,
             PaymentStatus::SUCCEEDED => self::TRANSACTION_STATUS_SUCCEEDED,
             PaymentStatus::CANCELED => self::TRANSACTION_STATUS_CANCELED,
             default => null,
@@ -145,9 +156,10 @@ class YooKassaClient extends AbstractPaymentClient
     private function eventAdapter(?string $event): string
     {
         $event = match (explode('.', $event)[0]) {
-            ReceiptType::PAYMENT => self::CALLBACK_PAYMENT_TYPE_PAY,
-            ReceiptType::REFUND => self::CALLBACK_PAYMENT_TYPE_REFUND,
-            SettlementPayoutPaymentType::PAYOUT => self::CALLBACK_PAYMENT_TYPE_PAYOUT,
+            ReceiptType::PAYMENT => self::CALLBACK_EVENT_PAY,
+            ReceiptType::REFUND => self::CALLBACK_EVENT_REFUND,
+            SettlementPayoutPaymentType::PAYOUT => self::CALLBACK_EVENT_PAYOUT,
+//            'deal' => self::CALLBACK_EVENT_DEAL,
             default => null,
         };
         if (is_null($event)) abort(400);
@@ -159,7 +171,7 @@ class YooKassaClient extends AbstractPaymentClient
         $id = $transaction->metadata->order_id
             ?? str_replace('Возврат по заказу №', '', $transaction->description)
             ?? null;
-        if (is_null($id)) abort(400);
+        if (!is_int($id)) abort(400);
         return $id;
     }
 }
