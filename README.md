@@ -1,38 +1,66 @@
-## Установка проекта
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-Требуется наличие Ubuntu с установленными на него composer, git, docker.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-В терминале Ubuntu перейти в нужную директорию и запустить команды:
+## About Laravel
 
--     git clone https://github.com/Nickkolass/payment.git
--     composer install
--     cp .env.example .env
--     docker compose up -d
-- В проекте подключен сервис YOO_KASSA, для работы которого используется https прокси NGROK. В целях предоставления
-  возможности просмотра функционала без соответствующих токенов, по умолчанию приложение настроено на использование
-  заглушки. Для активации сервиса YOO_KASSA необходимо:
-    - в файле .env в поле PAYMENT_CONNECTION установить значение 'yookassa', в поле NGROK_TOKEN установить значение
-      токена для сервиса ngrok
-    - в терминале выполнить команды
-    -     docker exec -it payment_app bash
-    -     ./ngrok customers add-authtoken $token // вставить токен ngrok
-    -     ./ngrok http host.docker.internal:8877
-    - скопировать значение, выведенное в результате выполнения команд в терминале в поле "Forwarding" с добавлением
-      "/api/payment/callback" например https://d93f-217-65-215-218.ngrok-free.app/api/payment/callback
-    - в личном кабинете yookassa https://yookassa.ru/my/merchant/integration/http-notifications, а также
-      https://yookassa.ru/my/gate/integration/webhooks в полях "URL для уведомлений" установить скопированное значение.
-      В графах "О каких событиях уведомлять" выбрать все.
--     docker exec -it payment_app bash
-    -     php artisan init
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-## Начало работы
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-Для смены способа уведомления базового проекта (shop) о проведенных операциях в графе 'reply_to_driver'
-файла app/Components/Transport/Consumer/customers/65a4da542d4844.php установить значение 'amqp' либо 'http'.
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-При выборе в базовом проекте (shop) способа доставки сообщений до платежной системы посредством amqp протокола выполнить
-следующие команды. При этом требующие немедленного ответа запросы буду направляться по http вне зависимости от настроек.
+## Learning Laravel
 
--     docker exec -it payment_app bash
-    -     php artisan amqp:consume payment
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
+You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+
+If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+
+## Laravel Sponsors
+
+We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+
+### Premium Partners
+
+- **[Vehikl](https://vehikl.com/)**
+- **[Tighten Co.](https://tighten.co)**
+- **[WebReinvent](https://webreinvent.com/)**
+- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+- **[64 Robots](https://64robots.com)**
+- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
+- **[Cyber-Duck](https://cyber-duck.co.uk)**
+- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
+- **[Jump24](https://jump24.co.uk)**
+- **[Redberry](https://redberry.international/laravel/)**
+- **[Active Logic](https://activelogic.com)**
+- **[byte5](https://byte5.de)**
+- **[OP.GG](https://op.gg)**
+
+## Contributing
+
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+
+## Code of Conduct
+
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+
+## Security Vulnerabilities
+
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+
+## License
+
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
