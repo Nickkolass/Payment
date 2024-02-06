@@ -11,12 +11,12 @@
             //Обработка ответа с токеном карты
             var form = document.createElement('form');
             form.method = 'post';
-            form.action = {!! json_encode($data['return_url']) !!};
+            form.action = {!! json_encode($return_url) !!};
             document.body.appendChild(form);
             var input = document.createElement('input');
             input.type = 'hidden';
             input.name = '_token';
-            input.value = {!! json_encode($data['_token']) !!};
+            input.value = {!! json_encode($_token) !!};
             form.appendChild(input);
             var input = document.createElement('input');
             input.type = 'hidden';
