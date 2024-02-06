@@ -1,8 +1,10 @@
 <?php
 
 
+namespace Tests\Feature;
+
 use App\Components\Payment\AbstractPaymentClient;
-use App\Http\Services\PaymentCallbackService;
+use App\Components\Payment\PaymentClientInterface;
 use Illuminate\Support\Str;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -40,66 +42,44 @@ class PaymentTest extends TestCase
         ];
         $route = route('payment.card.validate');
 
-        $this->postJson($route, $data)->assertUnprocessable();
-
         $this->withoutExceptionHandling();
-        $data = ['data' => json_encode($data)];
         $this->postJson($route, $data)->assertOk();
     }
 
     /**@test */
-    public function test_a_pay_can_be_done(): void
+    public function test_a_payment_can_be_done(): void
     {
         $data = [
             'order_id' => rand(),
             'price' => rand(),
-            'return_url' => route('payment.card.validate'),
         ];
-        $route = route('payment.pay');
-        $this->partialMock(PaymentCallbackService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('callback')->between(0,1);
-        });
+        $headers = ['requester-id' => array_key_first(config('consumer.customers'))];
+
+        $route = route('payment.payment');
 
         $this->withoutExceptionHandling();
 
-        $this->post($route, $data)
-            ->assertOk()
-            ->assertSeeText('http:');
-    }
+        foreach (AbstractPaymentClient::getPaymentTypes() as $paymentType) {
 
-    /**@test */
-    public function test_a_payout_can_be_done(): void
-    {
-        $data = [
-            'order_id' => rand(),
-            'price' => rand(),
-            'payout_token' => Str::random(20),
-        ];
-        $route = route('payment.payout');
-        $this->partialMock(PaymentCallbackService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('callback')->between(0,1);
-        });
+            $data['payment_type'] = $paymentType;
+            $payment_type = match ($paymentType) {
+                PaymentClientInterface::CALLBACK_PAYMENT_TYPE_PAY => ['return_url' => fake()->url()],
+                PaymentClientInterface::CALLBACK_PAYMENT_TYPE_PAYOUT => ['payout_token' => uniqid()],
+                PaymentClientInterface::CALLBACK_PAYMENT_TYPE_REFUND => ['pay_id' => uniqid()],
+            };
+            $data += $payment_type;
 
-        $this->withoutExceptionHandling();
+            foreach (config('consumer.drivers') as $driver) {
+                $this->partialMock($driver, function (MockInterface $mock) {
+                    $mock->shouldReceive('notify')->between(0, 1);
+                });
+            }
 
-        $this->post($route, $data)->assertOk();
-    }
+            $this->withHeaders($headers)
+                ->post($route, $data)
+                ->assertOk();
 
-    /**@test */
-    public function test_a_refund_can_be_done(): void
-    {
-        $data = [
-            'order_id' => rand(),
-            'price' => rand(),
-            'pay_id' => Str::random(20),
-        ];
-        $route = route('payment.refund');
-        $this->partialMock(PaymentCallbackService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('callback')->between(0,1);
-        });
-
-        $this->withoutExceptionHandling();
-
-        $this->post($route, $data)->assertOk();
+            array_pop($data);
+        }
     }
 }
